@@ -1,10 +1,11 @@
 import cProfile
+import math
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
-from fractions import Fraction
 from itertools import permutations
 
 BOARD_SIZE = 8
 PROFILING = True
+
 
 def give_sign(move: list[int], index: int) -> list[tuple[int, ...]]:
     if index == len(move):
@@ -39,19 +40,24 @@ def make_sliders_moves(
             moves_by_directions.append(tuple(moves))
     return tuple(moves_by_directions)
 
-def count_symmetry(coords:set[tuple[int, ...]]) -> int:
+
+def count_symmetry(coords: set[tuple[int, ...]]) -> int:
     total = 0
     for coord in coords:
         total += len(set(permutations(coord)))
     return total
 
+
 def calculate_leapers_mobility_and_coverage(
     moves: tuple[tuple[int, ...], ...], dimensions: int
-) -> tuple[int, Fraction]:
+) -> tuple[int, float]:
+    if not moves:
+        return 0, 0.0
     origin = tuple([0 for _ in range(dimensions)])
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
+    area_expected: float = math.comb(BOARD_SIZE + dimensions - 1, dimensions)
     while True:
         start_len = len(investigated)
         steps += 1
@@ -68,7 +74,7 @@ def calculate_leapers_mobility_and_coverage(
                     if new_coord[i] < 0 or new_coord[i] >= BOARD_SIZE:
                         not_valid = True
                         break
-                    if i > 0 and new_coord[i] < new_coord[i - 1]:
+                    if not needs_sorting and i > 0 and new_coord[i] < new_coord[i - 1]:
                         needs_sorting = True
                 if not_valid:
                     continue
@@ -78,6 +84,10 @@ def calculate_leapers_mobility_and_coverage(
                 if coord_tuple not in investigated:
                     new_stack.add(coord_tuple)
             investigated.add(coord)
+        if len(investigated) >= area_expected:
+            return steps - 2, count_symmetry(
+                investigated
+            ) / BOARD_SIZE**dimensions * 100
         if len(investigated) == start_len:
             return steps - 2, count_symmetry(
                 investigated
@@ -87,11 +97,12 @@ def calculate_leapers_mobility_and_coverage(
 
 def calculate_sliders_mobility_and_coverage(
     moves_by_directions: tuple[tuple[tuple[int, ...], ...], ...], dimensions: int
-) -> tuple[int, Fraction]:
+) -> tuple[int, float]:
     origin = tuple([0 for _ in range(dimensions)])
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
+    area_expected: int = math.comb(BOARD_SIZE + dimensions - 1, dimensions)
     while True:
         start_len = len(investigated)
         steps += 1
@@ -109,7 +120,11 @@ def calculate_sliders_mobility_and_coverage(
                         if new_coord[i] < 0 or new_coord[i] >= BOARD_SIZE:
                             not_valid = True
                             break
-                        if i > 0 and new_coord[i] < new_coord[i - 1]:
+                        if (
+                            not needs_sorting
+                            and i > 0
+                            and new_coord[i] < new_coord[i - 1]
+                        ):
                             needs_sorting = True
                     if not_valid:
                         break
@@ -119,6 +134,10 @@ def calculate_sliders_mobility_and_coverage(
                     if coord_tuple not in investigated:
                         new_stack.add(coord_tuple)
             investigated.add(coord)
+        if len(investigated) == area_expected:
+            return steps - 2, count_symmetry(
+                investigated
+            ) / BOARD_SIZE**dimensions * 100
         if len(investigated) == start_len:
             return steps - 2, count_symmetry(
                 investigated
@@ -156,9 +175,9 @@ def main() -> None:
         queen_moves: list[tuple[tuple[int, ...], ...]] = []
         jester_moves: list[tuple[int, ...]] = []
         if PROFILING:
-            for piece_dimension in range(1, dimension):
+            for piece_dimension in range(1, dimension + 1):
                 queen_moves.extend(calculate_sliders(dimension, piece_dimension))
-            for piece_dimension in range(1, dimension):
+            for piece_dimension in range(1, dimension + 1):
                 for index in range(1, piece_dimension):
                     jester_moves.extend(
                         calculate_leaper(dimension, piece_dimension, index)
@@ -171,7 +190,7 @@ def main() -> None:
                 ]
                 for future_slider in as_completed(futures_slider):
                     queen_moves.extend(future_slider.result())
-                futures_leapers: list[Future[tuple[tuple[int,...],...]]] = []
+                futures_leapers: list[Future[tuple[tuple[int, ...], ...]]] = []
                 for piece_dimension in range(dimension + 1):
                     futures_leapers.extend(
                         [
