@@ -1,9 +1,10 @@
+import cProfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from fractions import Fraction
 from itertools import permutations
 
 BOARD_SIZE = 8
-
+PROFILING = True
 
 def give_sign(move: list[int], index: int) -> list[tuple[int, ...]]:
     if index == len(move):
@@ -152,15 +153,22 @@ def calculate_sliders(
 def calculate_all_leapers(dimensions: int) -> None:
     for dimension in range(2, dimensions + 1):
         jester_moves: list[tuple[int, ...]] = []
-        with ProcessPoolExecutor(max_workers=12) as pool:
-            futures = []
-            for piece_dimension in range(dimension + 1):
-                futures.extend([
-                    pool.submit(calculate_leaper, dimension, piece_dimension, index)
-                    for index in range(1, piece_dimension)
-                ])
-            for future in as_completed(futures):
-                jester_moves.extend(future.result())
+        if PROFILING:
+            for piece_dimension in range(1, dimension):
+                for index in range(1, piece_dimension):
+                    jester_moves.extend(
+                        calculate_leaper(dimension, piece_dimension, index)
+                    )
+        else:
+            with ProcessPoolExecutor(max_workers=12) as pool:
+                futures = []
+                for piece_dimension in range(dimension + 1):
+                    futures.extend([
+                        pool.submit(calculate_leaper, dimension, piece_dimension, index)
+                        for index in range(1, piece_dimension)
+                    ])
+                for future in as_completed(futures):
+                    jester_moves.extend(future.result())
         mobility, coverage = calculate_leapers_mobility_and_coverage(
             tuple(jester_moves), dimension
         )
@@ -170,13 +178,17 @@ def calculate_all_leapers(dimensions: int) -> None:
 def calculate_all_sliders(dimensions: int) -> None:
     for dimension in range(1, dimensions + 1):
         queen_moves: list[tuple[tuple[int, ...], ...]] = []
-        with ProcessPoolExecutor(max_workers=12) as pool:
-            futures = [
-                pool.submit(calculate_sliders, dimension, piece_dimension)
-                for piece_dimension in range(1, dimension)
-            ]
-            for future in as_completed(futures):
-                queen_moves.extend(future.result())
+        if PROFILING:
+            for piece_dimension in range(1, dimension):
+                queen_moves.extend(calculate_sliders(dimension, piece_dimension))
+        else:
+            with ProcessPoolExecutor(max_workers=12) as pool:
+                futures = [
+                    pool.submit(calculate_sliders, dimension, piece_dimension)
+                    for piece_dimension in range(1, dimension)
+                ]
+                for future in as_completed(futures):
+                    queen_moves.extend(future.result())
         for piece_dimension in range(1, dimension + 1):
             queen_moves.extend(calculate_sliders(dimension, piece_dimension))
         mobility, coverage = calculate_sliders_mobility_and_coverage(
@@ -193,4 +205,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if PROFILING:
+        cProfile.run("main()")
+    else:
+        main()
