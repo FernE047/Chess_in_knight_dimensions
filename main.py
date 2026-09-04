@@ -69,10 +69,10 @@ def calculate_leapers_mobility_and_coverage(
                         break
                     if i > 0 and new_coord[i] < new_coord[i - 1]:
                         needs_sorting = True
-                if needs_sorting:
-                    new_coord.sort()
                 if not_valid:
                     continue
+                if needs_sorting:
+                    new_coord.sort()
                 coord_tuple = tuple(new_coord)
                 if coord_tuple not in investigated:
                     new_stack.add(coord_tuple)
@@ -110,10 +110,10 @@ def calculate_sliders_mobility_and_coverage(
                             break
                         if i > 0 and new_coord[i] < new_coord[i - 1]:
                             needs_sorting = True
-                    if needs_sorting:
-                        new_coord.sort()
                     if not_valid:
                         break
+                    if needs_sorting:
+                        new_coord.sort()
                     coord_tuple = tuple(new_coord)
                     if coord_tuple not in investigated:
                         new_stack.add(coord_tuple)
@@ -139,6 +139,16 @@ def calculate_leaper(
     return moves
 
 
+def calculate_sliders(
+    dimension: int, piece_dimension: int
+) -> tuple[tuple[tuple[int, ...], ...], ...]:
+    base_moves = tuple((dimension - piece_dimension) * [0] + (piece_dimension) * [1])
+    moves = make_sliders_moves(base_moves)
+    mobility, coverage = calculate_sliders_mobility_and_coverage(moves, dimension)
+    print(f"{base_moves} | {mobility} | {coverage}%")
+    return moves
+
+
 def calculate_all_leapers(dimensions: int) -> None:
     for dimension in range(2, dimensions + 1):
         jester_moves: list[tuple[int, ...]] = []
@@ -157,28 +167,14 @@ def calculate_all_leapers(dimensions: int) -> None:
         print(f"Jester | {mobility} | {coverage}%")
 
 
-def calculate_sliders(
-    dimension: int, piece_dimension: int
-) -> tuple[tuple[tuple[int, ...], ...], ...]:
-    base_moves = tuple((dimension - piece_dimension) * [0] + (piece_dimension) * [1])
-    moves = make_sliders_moves(base_moves)
-    mobility, coverage = calculate_sliders_mobility_and_coverage(moves, dimension)
-    print(f"{base_moves} | {mobility} | {coverage}%")
-    return moves
-
-
 def calculate_all_sliders(dimensions: int) -> None:
     for dimension in range(1, dimensions + 1):
         queen_moves: list[tuple[tuple[int, ...], ...]] = []
         with ProcessPoolExecutor(max_workers=12) as pool:
-            futures = []
-            for piece_dimension in range(1, dimension + 1):
-                futures.extend(
-                    [
-                        pool.submit(calculate_sliders, dimension, piece_dimension)
-                        for piece_dimension in range(1, piece_dimension)
-                    ]
-                )
+            futures = [
+                pool.submit(calculate_sliders, dimension, piece_dimension)
+                for piece_dimension in range(1, dimension)
+            ]
             for future in as_completed(futures):
                 queen_moves.extend(future.result())
         for piece_dimension in range(1, dimension + 1):
@@ -191,9 +187,9 @@ def calculate_all_sliders(dimensions: int) -> None:
 
 def main() -> None:
     print("SLIDERS :\n\n")
-    calculate_all_sliders(8)
+    calculate_all_sliders(6)
     print("LEAPERS :\n\n")
-    calculate_all_leapers(8)
+    calculate_all_leapers(6)
 
 
 if __name__ == "__main__":
