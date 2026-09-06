@@ -1,31 +1,32 @@
 import cProfile
+import time
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from itertools import permutations
 
 BOARD_SIZE = 8
-PROFILING = True
+PROFILING = False
 
 area_table: dict[int, tuple[int, int, int]] = {
-    1: (8,4,8),
-    2: (36,20,20),
-    3: (120,60,40),
-    4: (330,170,70),
-    5: (792,396,112),
-    6: (1716,868,168),
-    7: (3432,1716,240),
-    8: (6435,3235,330),
-    9: (11440,5720,440),
-    10: (19448,9752,572),
-    11: (31824,15912,728),
-    12: (50388,25236,910),
-    13: (77520,38760,1120),
-    14: (116280,58200,1360),
-    15: (170544,85272,1632),
-    16: (245157,122661,1938),
-    17: (346104,173052,2280),
-    18: (480700,240460,2660),
-    19: (657800,328900,3080),
-    20: (888030,444158,3542),
+    1: (8, 4, 8),
+    2: (36, 20, 20),
+    3: (120, 60, 40),
+    4: (330, 170, 70),
+    5: (792, 396, 112),
+    6: (1716, 868, 168),
+    7: (3432, 1716, 240),
+    8: (6435, 3235, 330),
+    9: (11440, 5720, 440),
+    10: (19448, 9752, 572),
+    11: (31824, 15912, 728),
+    12: (50388, 25236, 910),
+    13: (77520, 38760, 1120),
+    14: (116280, 58200, 1360),
+    15: (170544, 85272, 1632),
+    16: (245157, 122661, 1938),
+    17: (346104, 173052, 2280),
+    18: (480700, 240460, 2660),
+    19: (657800, 328900, 3080),
+    20: (888030, 444158, 3542),
 }
 
 
@@ -64,7 +65,7 @@ def make_sliders_moves(
 
 
 def calculate_leapers_mobility_and_coverage(
-    moves: tuple[tuple[int, ...], ...], dimensions: int
+    moves: tuple[tuple[int, ...], ...], dimensions: int, is_jester: bool = False
 ) -> int:
     if not moves:
         return 0
@@ -72,7 +73,10 @@ def calculate_leapers_mobility_and_coverage(
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
-    area_expected = area_table[dimensions][(sum(moves[0]) + 1) % 2]
+    if is_jester:
+        area_expected = area_table[dimensions][0]
+    else:
+        area_expected = area_table[dimensions][(sum(moves[0]) + 1) % 2]
     while True:
         steps += 1
         new_stack: set[tuple[int, ...]] = set()
@@ -104,14 +108,18 @@ def calculate_leapers_mobility_and_coverage(
 
 
 def calculate_sliders_mobility_and_coverage(
-    moves_by_directions: tuple[tuple[tuple[int, ...], ...], ...], dimensions: int
+    moves_by_directions: tuple[tuple[tuple[int, ...], ...], ...],
+    dimensions: int,
+    is_queen: bool = False,
 ) -> int:
     origin = tuple([0 for _ in range(dimensions)])
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
     base_move = moves_by_directions[0][0]
-    if 0 not in base_move:
+    if is_queen:
+        area_expected = area_table[dimensions][0]
+    elif 0 not in base_move:
         area_expected = area_table[dimensions][2]
     else:
         area_expected = area_table[dimensions][(sum(base_move) + 1) % 2]
@@ -175,8 +183,9 @@ def calculate_sliders(
 
 
 def main() -> None:
-    dimensions = 6
+    dimensions = 8
     for dimension in range(1, dimensions + 1):
+        begin = time.time()
         queen_moves: list[tuple[tuple[int, ...], ...]] = []
         jester_moves: list[tuple[int, ...]] = []
         if PROFILING:
@@ -188,10 +197,10 @@ def main() -> None:
                         calculate_leaper(dimension, piece_dimension, index)
                     )
         else:
-            with ProcessPoolExecutor(max_workers=12) as pool:
+            with ProcessPoolExecutor(max_workers=6) as pool:
                 futures_slider = [
                     pool.submit(calculate_sliders, dimension, piece_dimension)
-                    for piece_dimension in range(1, dimension)
+                    for piece_dimension in range(1, dimension + 1)
                 ]
                 for future_slider in as_completed(futures_slider):
                     queen_moves.extend(future_slider.result())
@@ -207,18 +216,21 @@ def main() -> None:
                     )
                 for future_leaper in as_completed(futures_leapers):
                     jester_moves.extend(future_leaper.result())
-        mobility = calculate_sliders_mobility_and_coverage(
-            tuple(queen_moves), dimension
-        )
-        print(f"Queen | {mobility}")
-        mobility = calculate_leapers_mobility_and_coverage(
-            tuple(jester_moves), dimension
-        )
-        print(f"Jester | {mobility}")
+        #mobility = calculate_sliders_mobility_and_coverage(
+        #    tuple(queen_moves), dimension, is_queen=True
+        #)
+        #print(f"Queen | {mobility}")
+        #mobility = calculate_leapers_mobility_and_coverage(
+        #    tuple(jester_moves), dimension, is_jester=True
+        #)
+        #print(f"Jester | {mobility}")
+        print(f"Dimension Total : {time.time() - begin}")
 
 
 if __name__ == "__main__":
+    begin = time.time()
     if PROFILING:
         cProfile.run("main()")
     else:
         main()
+    print(f"Total : {time.time() - begin}")
