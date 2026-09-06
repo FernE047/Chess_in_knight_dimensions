@@ -1,10 +1,32 @@
 import cProfile
-import math
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from itertools import permutations
 
 BOARD_SIZE = 8
 PROFILING = True
+
+area_table: dict[int, tuple[int, int, int]] = {
+    1: (8,4,8),
+    2: (36,20,20),
+    3: (120,60,40),
+    4: (330,170,70),
+    5: (792,396,112),
+    6: (1716,868,168),
+    7: (3432,1716,240),
+    8: (6435,3235,330),
+    9: (11440,5720,440),
+    10: (19448,9752,572),
+    11: (31824,15912,728),
+    12: (50388,25236,910),
+    13: (77520,38760,1120),
+    14: (116280,58200,1360),
+    15: (170544,85272,1632),
+    16: (245157,122661,1938),
+    17: (346104,173052,2280),
+    18: (480700,240460,2660),
+    19: (657800,328900,3080),
+    20: (888030,444158,3542),
+}
 
 
 def give_sign(move: list[int], index: int) -> list[tuple[int, ...]]:
@@ -41,25 +63,17 @@ def make_sliders_moves(
     return tuple(moves_by_directions)
 
 
-def count_symmetry(coords: set[tuple[int, ...]]) -> int:
-    total = 0
-    for coord in coords:
-        total += len(set(permutations(coord)))
-    return total
-
-
 def calculate_leapers_mobility_and_coverage(
     moves: tuple[tuple[int, ...], ...], dimensions: int
-) -> tuple[int, float]:
+) -> int:
     if not moves:
-        return 0, 0.0
+        return 0
     origin = tuple([0 for _ in range(dimensions)])
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
-    area_expected: float = math.comb(BOARD_SIZE + dimensions - 1, dimensions)
+    area_expected = area_table[dimensions][(sum(moves[0]) + 1) % 2]
     while True:
-        start_len = len(investigated)
         steps += 1
         new_stack: set[tuple[int, ...]] = set()
         for coord in stack:
@@ -85,26 +99,23 @@ def calculate_leapers_mobility_and_coverage(
                     new_stack.add(coord_tuple)
             investigated.add(coord)
         if len(investigated) >= area_expected:
-            return steps - 2, count_symmetry(
-                investigated
-            ) / BOARD_SIZE**dimensions * 100
-        if len(investigated) == start_len:
-            return steps - 2, count_symmetry(
-                investigated
-            ) / BOARD_SIZE**dimensions * 100
+            return steps - 1
         stack = new_stack
 
 
 def calculate_sliders_mobility_and_coverage(
     moves_by_directions: tuple[tuple[tuple[int, ...], ...], ...], dimensions: int
-) -> tuple[int, float]:
+) -> int:
     origin = tuple([0 for _ in range(dimensions)])
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
-    area_expected: int = math.comb(BOARD_SIZE + dimensions - 1, dimensions)
+    base_move = moves_by_directions[0][0]
+    if 0 not in base_move:
+        area_expected = area_table[dimensions][2]
+    else:
+        area_expected = area_table[dimensions][(sum(base_move) + 1) % 2]
     while True:
-        start_len = len(investigated)
         steps += 1
         new_stack: set[tuple[int, ...]] = set()
         for coord in stack:
@@ -135,13 +146,7 @@ def calculate_sliders_mobility_and_coverage(
                         new_stack.add(coord_tuple)
             investigated.add(coord)
         if len(investigated) == area_expected:
-            return steps - 2, count_symmetry(
-                investigated
-            ) / BOARD_SIZE**dimensions * 100
-        if len(investigated) == start_len:
-            return steps - 2, count_symmetry(
-                investigated
-            ) / BOARD_SIZE**dimensions * 100
+            return steps - 1
         stack = new_stack
 
 
@@ -154,8 +159,8 @@ def calculate_leaper(
         + piece_index * [2]
     )
     moves = make_leapers_moves(base_moves)
-    mobility, coverage = calculate_leapers_mobility_and_coverage(moves, dimension)
-    print(f"{base_moves} | {mobility} | {coverage}%")
+    mobility = calculate_leapers_mobility_and_coverage(moves, dimension)
+    print(f"{base_moves} | {mobility}")
     return moves
 
 
@@ -164,8 +169,8 @@ def calculate_sliders(
 ) -> tuple[tuple[tuple[int, ...], ...], ...]:
     base_moves = tuple((dimension - piece_dimension) * [0] + (piece_dimension) * [1])
     moves = make_sliders_moves(base_moves)
-    mobility, coverage = calculate_sliders_mobility_and_coverage(moves, dimension)
-    print(f"{base_moves} | {mobility} | {coverage}%")
+    mobility = calculate_sliders_mobility_and_coverage(moves, dimension)
+    print(f"{base_moves} | {mobility}")
     return moves
 
 
@@ -202,14 +207,14 @@ def main() -> None:
                     )
                 for future_leaper in as_completed(futures_leapers):
                     jester_moves.extend(future_leaper.result())
-        mobility, coverage = calculate_sliders_mobility_and_coverage(
+        mobility = calculate_sliders_mobility_and_coverage(
             tuple(queen_moves), dimension
         )
-        print(f"Queen | {mobility} | {coverage}%")
-        mobility, coverage = calculate_leapers_mobility_and_coverage(
+        print(f"Queen | {mobility}")
+        mobility = calculate_leapers_mobility_and_coverage(
             tuple(jester_moves), dimension
         )
-        print(f"Jester | {mobility} | {coverage}%")
+        print(f"Jester | {mobility}")
 
 
 if __name__ == "__main__":
