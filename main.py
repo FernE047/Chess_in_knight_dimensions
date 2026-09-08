@@ -89,10 +89,11 @@ def calculate_leapers_mobility_and_coverage(
                 needs_sorting = False
                 for i, n in enumerate(move):
                     new_coord[i] += n
-                    if new_coord[i] < 0 or new_coord[i] >= BOARD_SIZE:
+                    current_value = new_coord[i]
+                    if current_value < 0 or current_value >= BOARD_SIZE:
                         not_valid = True
                         break
-                    if not needs_sorting and i > 0 and new_coord[i] < new_coord[i - 1]:
+                    if not needs_sorting and i > 0 and current_value < new_coord[i - 1]:
                         needs_sorting = True
                 if not_valid:
                     continue
@@ -136,13 +137,14 @@ def calculate_sliders_mobility_and_coverage(
                     needs_sorting = False
                     for i, n in enumerate(move):
                         new_coord[i] += n
-                        if new_coord[i] < 0 or new_coord[i] >= BOARD_SIZE:
+                        current_value = new_coord[i]
+                        if current_value < 0 or current_value >= BOARD_SIZE:
                             not_valid = True
                             break
                         if (
                             not needs_sorting
                             and i > 0
-                            and new_coord[i] < new_coord[i - 1]
+                            and current_value < new_coord[i - 1]
                         ):
                             needs_sorting = True
                     if not_valid:
@@ -216,14 +218,14 @@ def main() -> None:
                     )
                 for future_leaper in as_completed(futures_leapers):
                     jester_moves.extend(future_leaper.result())
-        #mobility = calculate_sliders_mobility_and_coverage(
+        # mobility = calculate_sliders_mobility_and_coverage(
         #    tuple(queen_moves), dimension, is_queen=True
-        #)
-        #print(f"Queen | {mobility}")
-        #mobility = calculate_leapers_mobility_and_coverage(
+        # )
+        # print(f"Queen | {mobility}")
+        # mobility = calculate_leapers_mobility_and_coverage(
         #    tuple(jester_moves), dimension, is_jester=True
-        #)
-        #print(f"Jester | {mobility}")
+        # )
+        # print(f"Jester | {mobility}")
         print(f"Dimension Total : {time.time() - begin}")
 
 
