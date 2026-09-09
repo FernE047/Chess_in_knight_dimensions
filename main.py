@@ -87,7 +87,6 @@ def calculate_leapers_mobility_and_coverage(
                 continue
             for move in moves:
                 new_coord = list(coord)
-                needs_sorting = False
                 new_coord[0] += move[0]
                 current_value = new_coord[0]
                 if current_value < 0 or current_value >= BOARD_SIZE:
@@ -99,15 +98,9 @@ def calculate_leapers_mobility_and_coverage(
                     if current_value < 0 or current_value >= BOARD_SIZE:
                         not_valid = True
                         break
-                    if (
-                        not needs_sorting
-                        and current_value < new_coord[i - 1]
-                    ):
-                        needs_sorting = True
                 if not_valid:
                     continue
-                if needs_sorting:
-                    new_coord.sort()
+                new_coord.sort()
                 coord_tuple = tuple(new_coord)
                 if coord_tuple not in investigated:
                     new_stack.add(coord_tuple)
@@ -142,7 +135,6 @@ def calculate_sliders_mobility_and_coverage(
             for direction in moves_by_directions:
                 for move in direction:
                     new_coord = list(coord)
-                    needs_sorting = False
                     new_coord[0] += move[0]
                     current_value = new_coord[0]
                     if current_value < 0 or current_value >= BOARD_SIZE:
@@ -154,12 +146,9 @@ def calculate_sliders_mobility_and_coverage(
                         if current_value < 0 or current_value >= BOARD_SIZE:
                             not_valid = True
                             break
-                        if not needs_sorting and current_value < new_coord[i - 1]:
-                            needs_sorting = True
                     if not_valid:
                         break
-                    if needs_sorting:
-                        new_coord.sort()
+                    new_coord.sort()
                     coord_tuple = tuple(new_coord)
                     if coord_tuple not in investigated:
                         new_stack.add(coord_tuple)
