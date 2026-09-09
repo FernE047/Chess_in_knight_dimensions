@@ -3,8 +3,10 @@ import time
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from itertools import permutations
 
+DIMENSION_MAX = 6
+QUEEN_AND_JESTER = False
 BOARD_SIZE = 8
-PROFILING = False
+PROFILING = True
 
 area_table: dict[int, tuple[int, int, int]] = {
     1: (8, 4, 8),
@@ -85,16 +87,25 @@ def calculate_leapers_mobility_and_coverage(
                 continue
             for move in moves:
                 new_coord = list(coord)
-                not_valid = False
                 needs_sorting = False
-                for i, n in enumerate(move):
-                    new_coord[i] += n
-                    current_value = new_coord[i]
-                    if current_value < 0 or current_value >= BOARD_SIZE:
-                        not_valid = True
-                        break
-                    if not needs_sorting and i > 0 and current_value < new_coord[i - 1]:
-                        needs_sorting = True
+                new_coord[0] += move[0]
+                current_value = new_coord[0]
+                if current_value < 0 or current_value >= BOARD_SIZE:
+                    not_valid = True
+                    continue
+                else:
+                    not_valid = False
+                    for i in range(1, dimensions):
+                        new_coord[i] += move[i]
+                        current_value = new_coord[i]
+                        if current_value < 0 or current_value >= BOARD_SIZE:
+                            not_valid = True
+                            break
+                        if (
+                            not needs_sorting
+                            and current_value < new_coord[i - 1]
+                        ):
+                            needs_sorting = True
                 if not_valid:
                     continue
                 if needs_sorting:
@@ -133,20 +144,22 @@ def calculate_sliders_mobility_and_coverage(
             for direction in moves_by_directions:
                 for move in direction:
                     new_coord = list(coord)
-                    not_valid = False
                     needs_sorting = False
-                    for i, n in enumerate(move):
-                        new_coord[i] += n
-                        current_value = new_coord[i]
-                        if current_value < 0 or current_value >= BOARD_SIZE:
-                            not_valid = True
-                            break
-                        if (
-                            not needs_sorting
-                            and i > 0
-                            and current_value < new_coord[i - 1]
-                        ):
-                            needs_sorting = True
+                    new_coord[0] += move[0]
+                    current_value = new_coord[0]
+                    if current_value < 0 or current_value >= BOARD_SIZE:
+                        not_valid = True
+                        break
+                    else:
+                        not_valid = False
+                        for i in range(1, dimensions):
+                            new_coord[i] += move[i]
+                            current_value = new_coord[i]
+                            if current_value < 0 or current_value >= BOARD_SIZE:
+                                not_valid = True
+                                break
+                            if not needs_sorting and current_value < new_coord[i - 1]:
+                                needs_sorting = True
                     if not_valid:
                         break
                     if needs_sorting:
@@ -185,19 +198,19 @@ def calculate_sliders(
 
 
 def main() -> None:
-    dimensions = 8
-    for dimension in range(1, dimensions + 1):
+    for dimension in range(1, DIMENSION_MAX + 1):
         begin = time.time()
         queen_moves: list[tuple[tuple[int, ...], ...]] = []
         jester_moves: list[tuple[int, ...]] = []
         if PROFILING:
             for piece_dimension in range(1, dimension + 1):
                 queen_moves.extend(calculate_sliders(dimension, piece_dimension))
-            for piece_dimension in range(1, dimension + 1):
-                for index in range(1, piece_dimension):
-                    jester_moves.extend(
-                        calculate_leaper(dimension, piece_dimension, index)
-                    )
+            if dimension > 1:
+                for piece_dimension in range(1, dimension + 1):
+                    for index in range(1, piece_dimension):
+                        jester_moves.extend(
+                            calculate_leaper(dimension, piece_dimension, index)
+                        )
         else:
             with ProcessPoolExecutor(max_workers=6) as pool:
                 futures_slider = [
@@ -206,26 +219,28 @@ def main() -> None:
                 ]
                 for future_slider in as_completed(futures_slider):
                     queen_moves.extend(future_slider.result())
-                futures_leapers: list[Future[tuple[tuple[int, ...], ...]]] = []
-                for piece_dimension in range(dimension + 1):
-                    futures_leapers.extend(
-                        [
-                            pool.submit(
-                                calculate_leaper, dimension, piece_dimension, index
-                            )
-                            for index in range(1, piece_dimension)
-                        ]
-                    )
-                for future_leaper in as_completed(futures_leapers):
-                    jester_moves.extend(future_leaper.result())
-        # mobility = calculate_sliders_mobility_and_coverage(
-        #    tuple(queen_moves), dimension, is_queen=True
-        # )
-        # print(f"Queen | {mobility}")
-        # mobility = calculate_leapers_mobility_and_coverage(
-        #    tuple(jester_moves), dimension, is_jester=True
-        # )
-        # print(f"Jester | {mobility}")
+                if dimension > 1:
+                    futures_leapers: list[Future[tuple[tuple[int, ...], ...]]] = []
+                    for piece_dimension in range(dimension + 1):
+                        futures_leapers.extend(
+                            [
+                                pool.submit(
+                                    calculate_leaper, dimension, piece_dimension, index
+                                )
+                                for index in range(1, piece_dimension)
+                            ]
+                        )
+                    for future_leaper in as_completed(futures_leapers):
+                        jester_moves.extend(future_leaper.result())
+        if QUEEN_AND_JESTER:
+            mobility = calculate_sliders_mobility_and_coverage(
+                tuple(queen_moves), dimension, is_queen=True
+            )
+            print(f"Queen | {mobility}")
+            mobility = calculate_leapers_mobility_and_coverage(
+                tuple(jester_moves), dimension, is_jester=True
+            )
+            print(f"Jester | {mobility}")
         print(f"Dimension Total : {time.time() - begin}")
 
 
