@@ -91,21 +91,19 @@ def calculate_leapers_mobility_and_coverage(
                 new_coord[0] += move[0]
                 current_value = new_coord[0]
                 if current_value < 0 or current_value >= BOARD_SIZE:
-                    not_valid = True
                     continue
-                else:
-                    not_valid = False
-                    for i in range(1, dimensions):
-                        new_coord[i] += move[i]
-                        current_value = new_coord[i]
-                        if current_value < 0 or current_value >= BOARD_SIZE:
-                            not_valid = True
-                            break
-                        if (
-                            not needs_sorting
-                            and current_value < new_coord[i - 1]
-                        ):
-                            needs_sorting = True
+                not_valid = False
+                for i in range(1, dimensions):
+                    new_coord[i] += move[i]
+                    current_value = new_coord[i]
+                    if current_value < 0 or current_value >= BOARD_SIZE:
+                        not_valid = True
+                        break
+                    if (
+                        not needs_sorting
+                        and current_value < new_coord[i - 1]
+                    ):
+                        needs_sorting = True
                 if not_valid:
                     continue
                 if needs_sorting:
@@ -148,18 +146,16 @@ def calculate_sliders_mobility_and_coverage(
                     new_coord[0] += move[0]
                     current_value = new_coord[0]
                     if current_value < 0 or current_value >= BOARD_SIZE:
-                        not_valid = True
                         break
-                    else:
-                        not_valid = False
-                        for i in range(1, dimensions):
-                            new_coord[i] += move[i]
-                            current_value = new_coord[i]
-                            if current_value < 0 or current_value >= BOARD_SIZE:
-                                not_valid = True
-                                break
-                            if not needs_sorting and current_value < new_coord[i - 1]:
-                                needs_sorting = True
+                    not_valid = False
+                    for i in range(1, dimensions):
+                        new_coord[i] += move[i]
+                        current_value = new_coord[i]
+                        if current_value < 0 or current_value >= BOARD_SIZE:
+                            not_valid = True
+                            break
+                        if not needs_sorting and current_value < new_coord[i - 1]:
+                            needs_sorting = True
                     if not_valid:
                         break
                     if needs_sorting:
