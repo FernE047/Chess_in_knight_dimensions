@@ -71,7 +71,7 @@ def calculate_leapers_mobility_and_coverage(
 ) -> int:
     if not moves:
         return 0
-    origin = tuple([0 for _ in range(dimensions)])
+    origin = tuple(0 for _ in range(dimensions))
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
@@ -105,7 +105,7 @@ def calculate_leapers_mobility_and_coverage(
                 if coord_tuple not in investigated:
                     new_stack.add(coord_tuple)
             investigated.add(coord)
-        if len(investigated) >= area_expected:
+        if investigated.__len__() >= area_expected:
             return steps - 1
         stack = new_stack
 
@@ -115,7 +115,7 @@ def calculate_sliders_mobility_and_coverage(
     dimensions: int,
     is_queen: bool = False,
 ) -> int:
-    origin = tuple([0 for _ in range(dimensions)])
+    origin = tuple(0 for _ in range(dimensions))
     steps = 0
     stack = {origin}
     investigated: set[tuple[int, ...]] = set()
@@ -153,7 +153,7 @@ def calculate_sliders_mobility_and_coverage(
                     if coord_tuple not in investigated:
                         new_stack.add(coord_tuple)
             investigated.add(coord)
-        if len(investigated) == area_expected:
+        if investigated.__len__() == area_expected:
             return steps - 1
         stack = new_stack
 
@@ -197,7 +197,7 @@ def main() -> None:
                             calculate_leaper(dimension, piece_dimension, index)
                         )
         else:
-            with ProcessPoolExecutor(max_workers=6) as pool:
+            with ProcessPoolExecutor(max_workers=12) as pool:
                 futures_slider = [
                     pool.submit(calculate_sliders, dimension, piece_dimension)
                     for piece_dimension in range(1, dimension + 1)
