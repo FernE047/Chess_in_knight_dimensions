@@ -102,11 +102,10 @@ def calculate_leapers_mobility_and_coverage(
                     continue
                 new_coord.sort()
                 coord_tuple = tuple(new_coord)
-                if coord_tuple not in investigated:
-                    new_stack.add(coord_tuple)
+                new_stack.add(coord_tuple)
             investigated.add(coord)
-        if investigated.__len__() >= area_expected:
-            return steps - 1
+        if (investigated.union(new_stack)).__len__() >= area_expected:
+            return steps
         stack = new_stack
 
 
@@ -150,11 +149,10 @@ def calculate_sliders_mobility_and_coverage(
                         break
                     new_coord.sort()
                     coord_tuple = tuple(new_coord)
-                    if coord_tuple not in investigated:
-                        new_stack.add(coord_tuple)
+                    new_stack.add(coord_tuple)
             investigated.add(coord)
-        if investigated.__len__() == area_expected:
-            return steps - 1
+        if (investigated.union(new_stack)).__len__() >= area_expected:
+            return steps
         stack = new_stack
 
 
